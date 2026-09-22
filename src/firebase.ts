@@ -153,10 +153,10 @@ async function testConnection() {
  * Esta função é utilizada EXCLUSIVAMENTE para controle de visibilidade da interface (UI).
  * A autorização definitiva e inviolável é executada pelas regras do Firestore no servidor.
  */
-export async function hasSpecialistAccess(user: FirebaseUser | null): Promise<boolean> {
+export async function hasSpecialistAccess(user: FirebaseUser | null, forceRefresh: boolean = false): Promise<boolean> {
   if (!user) return false;
   try {
-    const tokenResult = await user.getIdTokenResult();
+    const tokenResult = await user.getIdTokenResult(forceRefresh);
     return tokenResult.claims.specialist === true;
   } catch (error) {
     console.error("Erro ao verificar Custom Claims de especialista:", error);

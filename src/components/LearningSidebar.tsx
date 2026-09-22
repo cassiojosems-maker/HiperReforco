@@ -1,6 +1,18 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { Map, Star, ChevronRight, Trash2, WifiOff, Zap, Info } from 'lucide-react';
+import { 
+  Map, 
+  ChevronRight, 
+  Trash2, 
+  WifiOff, 
+  Zap, 
+  Info, 
+  ClipboardCheck, 
+  LayoutDashboard, 
+  Compass, 
+  Users, 
+  LogOut 
+} from 'lucide-react';
 import { LearningTrail, CachedQuiz } from '../types';
 
 interface LearningSidebarProps {
@@ -12,6 +24,11 @@ interface LearningSidebarProps {
   onStartCachedQuiz?: (quiz: CachedQuiz) => void;
   onDeleteCachedQuiz?: (quizId: string) => void;
   isOffline?: boolean;
+  onNavigate?: (screen: 'setup' | 'dashboard' | 'expansion' | 'missions') => void;
+  onSwitchProfile?: () => void;
+  onLogout?: () => void;
+  pendingMissionsCount?: number;
+  currentScreen?: string;
 }
 
 export default function LearningSidebar({
@@ -22,10 +39,132 @@ export default function LearningSidebar({
   cachedQuizzes = [],
   onStartCachedQuiz,
   onDeleteCachedQuiz,
-  isOffline = false
+  isOffline = false,
+  onNavigate,
+  onSwitchProfile,
+  onLogout,
+  pendingMissionsCount = 0,
+  currentScreen = 'setup'
 }: LearningSidebarProps) {
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
+      {/* Menu Lateral Esquerdo / Navegação dos Pais */}
+      <div className="glass-card p-3 rounded-3xl bg-white border border-slate-100 shadow-sm space-y-1">
+        <div className="px-3 py-1.5 text-[11px] font-black uppercase tracking-wider text-slate-400">
+          Menu Principal
+        </div>
+        
+        {/* 1. Painel */}
+        <button
+          type="button"
+          onClick={() => onNavigate?.('dashboard')}
+          className={`w-full flex items-center justify-between px-3 py-2.5 rounded-2xl text-sm font-semibold transition-all ${
+            currentScreen === 'dashboard'
+              ? 'bg-indigo-50 text-indigo-700 font-bold'
+              : 'text-slate-600 hover:text-indigo-600 hover:bg-slate-50'
+          }`}
+        >
+          <div className="flex items-center gap-2.5">
+            <LayoutDashboard size={18} className="text-indigo-500" />
+            <span>Painel</span>
+          </div>
+          <ChevronRight size={16} className="text-slate-400" />
+        </button>
+
+        {/* 2. Expansão do Hiperfoco */}
+        <button
+          type="button"
+          onClick={() => onNavigate?.('expansion')}
+          className={`w-full flex items-center justify-between px-3 py-2.5 rounded-2xl text-sm font-semibold transition-all ${
+            currentScreen === 'expansion'
+              ? 'bg-indigo-50 text-indigo-700 font-bold'
+              : 'text-slate-600 hover:text-indigo-600 hover:bg-slate-50'
+          }`}
+        >
+          <div className="flex items-center gap-2.5">
+            <Compass size={18} className="text-purple-500" />
+            <span>Expansão do Hiperfoco</span>
+          </div>
+          <ChevronRight size={16} className="text-slate-400" />
+        </button>
+
+        {/* 3. Trocar Perfil */}
+        {onSwitchProfile && (
+          <button
+            type="button"
+            onClick={onSwitchProfile}
+            className="w-full flex items-center justify-between px-3 py-2.5 rounded-2xl text-sm font-semibold text-slate-600 hover:text-indigo-600 hover:bg-slate-50 transition-all"
+          >
+            <div className="flex items-center gap-2.5">
+              <Users size={18} className="text-emerald-500" />
+              <span>Trocar Perfil</span>
+            </div>
+            <ChevronRight size={16} className="text-slate-400" />
+          </button>
+        )}
+
+        {/* 4. Salvos Offline */}
+        <button
+          type="button"
+          onClick={() => {
+            const el = document.getElementById('offline-quizzes-section');
+            if (el) el.scrollIntoView({ behavior: 'smooth' });
+          }}
+          className="w-full flex items-center justify-between px-3 py-2.5 rounded-2xl text-sm font-semibold text-slate-600 hover:text-amber-600 hover:bg-amber-50/50 transition-all"
+        >
+          <div className="flex items-center gap-2.5">
+            <WifiOff size={18} className="text-amber-500" />
+            <span>Salvos Offline</span>
+          </div>
+          <span className="text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 font-bold">
+            {cachedQuizzes.length}
+          </span>
+        </button>
+
+        {/* 5. Missões do Professor */}
+        <button
+          type="button"
+          onClick={() => onNavigate?.('missions')}
+          className={`w-full flex items-center justify-between px-3 py-2.5 rounded-2xl text-sm font-semibold transition-all ${
+            currentScreen === 'missions'
+              ? 'bg-indigo-600 text-white font-bold shadow-md shadow-indigo-100'
+              : 'text-slate-700 hover:text-indigo-600 hover:bg-indigo-50/70'
+          }`}
+        >
+          <div className="flex items-center gap-2.5">
+            <ClipboardCheck size={18} className={currentScreen === 'missions' ? 'text-white' : 'text-indigo-600'} />
+            <span className={currentScreen === 'missions' ? 'text-white' : 'font-bold text-slate-800'}>
+              Missões do Professor
+            </span>
+          </div>
+          {pendingMissionsCount > 0 ? (
+            <span className={`text-xs px-2 py-0.5 rounded-full font-black ${
+              currentScreen === 'missions' 
+                ? 'bg-white text-indigo-600' 
+                : 'bg-indigo-100 text-indigo-700 animate-pulse'
+            }`}>
+              {pendingMissionsCount}
+            </span>
+          ) : (
+            <ChevronRight size={16} className={currentScreen === 'missions' ? 'text-indigo-200' : 'text-slate-400'} />
+          )}
+        </button>
+
+        {/* 6. Sair */}
+        {onLogout && (
+          <button
+            type="button"
+            onClick={onLogout}
+            className="w-full flex items-center justify-between px-3 py-2.5 rounded-2xl text-sm font-semibold text-rose-600 hover:bg-rose-50 transition-all"
+          >
+            <div className="flex items-center gap-2.5">
+              <LogOut size={18} className="text-rose-500" />
+              <span>Sair</span>
+            </div>
+          </button>
+        )}
+      </div>
+
       {/* Learning Trails Section */}
       <div className="space-y-4">
         <div className="flex items-center gap-2 px-2">
@@ -74,22 +213,26 @@ export default function LearningSidebar({
         )}
       </div>
 
-      {/* Offline / Cached Quizzes Section */}
-      {cachedQuizzes.length > 0 && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between px-2">
-            <div className="flex items-center gap-2">
-              <WifiOff size={20} className="text-amber-500" />
-              <h2 className="font-bold text-slate-800">Salvos (Offline)</h2>
-              <div className="group relative">
-                <Info size={14} className="text-slate-400 cursor-pointer" />
-                <div className="absolute left-0 top-6 w-48 bg-slate-800 text-white text-xs p-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity z-50 pointer-events-none">
-                  Acesse seus quizzes favoritos mesmo sem conexão com a internet.
-                </div>
+      {/* Salvos Offline Section */}
+      <div id="offline-quizzes-section" className="space-y-4">
+        <div className="flex items-center justify-between px-2">
+          <div className="flex items-center gap-2">
+            <WifiOff size={20} className="text-amber-500" />
+            <h2 className="font-bold text-slate-800">Salvos Offline</h2>
+            <div className="group relative">
+              <Info size={14} className="text-slate-400 cursor-pointer" />
+              <div className="absolute left-0 top-6 w-48 bg-slate-800 text-white text-xs p-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity z-50 pointer-events-none">
+                Acesse seus quizzes favoritos mesmo sem conexão com a internet.
               </div>
             </div>
           </div>
-          <div className="grid grid-cols-1 gap-4">
+          <span className="text-xs font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-100">
+            {cachedQuizzes.length}
+          </span>
+        </div>
+
+        {cachedQuizzes.length > 0 ? (
+          <div className="grid grid-cols-1 gap-3">
             {cachedQuizzes.map((quiz) => (
               <div key={quiz.id} className="relative group">
                 <motion.button
@@ -116,14 +259,69 @@ export default function LearningSidebar({
                     }
                   }}
                   className="absolute top-2 right-2 p-1.5 bg-red-50 text-red-500 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-red-100 transition-all"
+                  title="Excluir quiz salvo"
                 >
                   <Trash2 size={16} />
                 </button>
               </div>
             ))}
           </div>
+        ) : (
+          <div className="glass-card p-5 rounded-3xl bg-slate-50 border border-slate-200 text-center">
+            <p className="text-xs text-slate-500">Nenhum quiz salvo offline no momento.</p>
+          </div>
+        )}
+      </div>
+
+      {/* Missões do Professor - Item posicionado imediatamente abaixo de Salvos Offline */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between px-2">
+          <div className="flex items-center gap-2">
+            <ClipboardCheck size={20} className="text-indigo-600" />
+            <h2 className="font-bold text-slate-800">Missões do Professor</h2>
+          </div>
+          {pendingMissionsCount > 0 && (
+            <span className="text-xs px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 font-bold border border-indigo-200 animate-pulse">
+              {pendingMissionsCount} {pendingMissionsCount === 1 ? 'pendente' : 'pendentes'}
+            </span>
+          )}
         </div>
-      )}
+
+        <div className="glass-card p-5 rounded-3xl bg-white border border-slate-100 shadow-sm space-y-3">
+          {pendingMissionsCount > 0 ? (
+            <>
+              <div className="space-y-1">
+                <p className="text-xs text-slate-700 font-medium leading-relaxed">
+                  Você tem <strong className="text-indigo-700 font-bold">{pendingMissionsCount}</strong> {pendingMissionsCount === 1 ? 'atividade enviada' : 'atividades enviadas'} por professores ou especialistas.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => onNavigate?.('missions')}
+                className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-md shadow-indigo-100 flex items-center justify-center gap-2 transition-all active:scale-95"
+              >
+                <span>Ver Missões</span>
+                <ChevronRight size={16} />
+              </button>
+            </>
+          ) : (
+            <>
+              <p className="text-xs text-slate-500 leading-relaxed">
+                Nenhuma missão pendente no momento.
+              </p>
+              <button
+                type="button"
+                onClick={() => onNavigate?.('missions')}
+                className="w-full py-2 bg-slate-50 hover:bg-indigo-50 text-indigo-700 font-semibold text-xs rounded-xl border border-slate-200/60 transition-all flex items-center justify-center gap-1.5"
+              >
+                <span>Abrir Missões do Professor</span>
+                <ChevronRight size={14} />
+              </button>
+            </>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
+

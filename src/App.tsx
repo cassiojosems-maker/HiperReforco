@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { QuizConfig, Question, UserStats, RankingEntry, Badge, QuizHistoryEntry, LearningTrail, SpecialistComment, SpecialistAssignment, CachedQuiz, ChildProfile, QuizProgress } from './types';
 import { generateQuizQuestions, generateRewardQuiz, generateMindMap } from './services/geminiService';
 import { auth, db, googleProvider, handleFirestoreError, logFirestoreError, OperationType, hasSpecialistAccess } from './firebase';
@@ -17,9 +17,11 @@ import ProfileSelector from './components/ProfileSelector';
 import SupportChat from './components/SupportChat';
 import ExpansionWizard from './components/ExpansionWizard';
 import LearningSidebar from './components/LearningSidebar';
+import ManagementView from './components/ManagementView';
+import TeacherMissions from './components/TeacherMissions';
 import { AvatarCustomizer } from './components/AvatarCustomizer';
 import { useAccessibility } from './contexts/AccessibilityContext';
-import { Trophy, Star, Zap, LayoutDashboard, LogIn, LogOut, User as UserIcon, UserCheck, WifiOff, Users, Map, Briefcase, Award } from 'lucide-react';
+import { Trophy, Star, Zap, LayoutDashboard, LogIn, LogOut, User as UserIcon, UserCheck, WifiOff, Users, Map, Briefcase, Award, ClipboardCheck } from 'lucide-react';
 import { saveQuizToCache, getCachedQuizzes, removeQuizFromCache } from './lib/cache';
 import { calculateStreak } from './lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
@@ -46,12 +48,10 @@ const INITIAL_STATS: UserStats = {
   comments: []
 };
 
-import ManagementView from './components/ManagementView';
-
 export default function App() {
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [isSpecialistUser, setIsSpecialistUser] = useState<boolean>(false);
-  const [screen, setScreen] = useState<'setup' | 'quiz' | 'result' | 'reward' | 'dashboard' | 'auth' | 'specialist' | 'expansion' | 'management'>('setup');
+  const [screen, setScreen] = useState<'setup' | 'quiz' | 'result' | 'reward' | 'dashboard' | 'auth' | 'specialist' | 'expansion' | 'management' | 'missions'>('setup');
   const [config, setConfig] = useState<QuizConfig | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [rewardQuestions, setRewardQuestions] = useState<Question[]>([]);
@@ -62,6 +62,7 @@ export default function App() {
   const [stats, setStats] = useState<UserStats>(INITIAL_STATS);
   const [rankings, setRankings] = useState<RankingEntry[]>([]);
   const [assignments, setAssignments] = useState<SpecialistAssignment[]>([]);
+  const [isLoadingAssignments, setIsLoadingAssignments] = useState(true);
   const [activeAssignment, setActiveAssignment] = useState<SpecialistAssignment | null>(null);
   const [cachedQuizzes, setCachedQuizzes] = useState<CachedQuiz[]>([]);
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
@@ -72,6 +73,29 @@ export default function App() {
   const [quizProgress, setQuizProgress] = useState<QuizProgress | null>(null);
   const [lastResponses, setLastResponses] = useState<{ questionId: string; answer: string; isSkipped?: boolean }[]>([]);
   const { focusMode } = useAccessibility();
+
+  // Active child profile and scoped missions for active profile
+  const activeProfile = useMemo(() => {
+    return stats.profiles?.find(p => p.id === stats.activeProfileId) || null;
+  }, [stats.profiles, stats.activeProfileId]);
+
+  const profileAssignments = useMemo(() => {
+    return assignments.filter((assignment) => {
+      if (assignment.status && assignment.status !== 'pending') return false;
+
+      if (stats.activeProfileId) {
+        if (assignment.studentId === stats.activeProfileId) return true;
+        if ((assignment as any).profileId === stats.activeProfileId) return true;
+      }
+
+      if (user && assignment.studentId === user.uid) {
+        if (!stats.profiles || stats.profiles.length <= 1) return true;
+        if (stats.activeProfileId === stats.profiles[0]?.id) return true;
+      }
+
+      return false;
+    });
+  }, [assignments, stats.activeProfileId, stats.profiles, user]);
 
   // Auth Listener
   const [showInpiModal, setShowInpiModal] = useState(false);
@@ -173,6 +197,10 @@ export default function App() {
         onSnapshot(assignmentsQuery, (snapshot) => {
           const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as SpecialistAssignment));
           setAssignments(docs);
+          setIsLoadingAssignments(false);
+        }, (err) => {
+          console.error("Erro ao carregar atribuições:", err);
+          setIsLoadingAssignments(false);
         });
 
         // Load quiz progress (drafts)
@@ -210,6 +238,8 @@ export default function App() {
       } else {
         setIsSpecialistUser(false);
         setStats(INITIAL_STATS);
+        setAssignments([]);
+        setIsLoadingAssignments(false);
         setScreen('auth');
       }
     });
@@ -270,6 +300,8 @@ export default function App() {
       await signOut(auth);
       setIsSpecialistUser(false);
       setStats(INITIAL_STATS);
+      setAssignments([]);
+      setIsLoadingAssignments(false);
       setScreen('auth');
     } catch (error) {
       console.error("Logout error:", error);
@@ -840,6 +872,20 @@ export default function App() {
                   <span className="hidden md:inline">Expansão</span>
                 </button>
 
+                <button 
+                  onClick={() => setScreen('missions')}
+                  className={`flex items-center gap-2 text-sm font-bold transition-colors ${screen === 'missions' ? 'text-indigo-600' : 'text-slate-500 hover:text-indigo-500'}`}
+                  title="Missões do Professor"
+                >
+                  <ClipboardCheck size={18} />
+                  <span className="hidden md:inline">Missões</span>
+                  {profileAssignments.length > 0 && (
+                    <span className="px-1.5 py-0.5 bg-indigo-100 text-indigo-700 text-[10px] font-black rounded-full animate-pulse">
+                      {profileAssignments.length}
+                    </span>
+                  )}
+                </button>
+
                 {isSpecialistUser && (
                   <>
                     <button 
@@ -934,7 +980,7 @@ export default function App() {
       </header>
 
       <main className="max-w-6xl mx-auto mt-8 px-6 grid grid-cols-1 lg:grid-cols-12 gap-8">
-          {screen === 'setup' && !focusMode && user && stats.activeProfileId && (
+        {(screen === 'setup' || screen === 'missions') && !focusMode && user && stats.activeProfileId && (
           <div className="hidden lg:block lg:col-span-4">
             <LearningSidebar 
               activeTrail={stats.activeTrail}
@@ -945,10 +991,15 @@ export default function App() {
               onStartCachedQuiz={handleStartCachedQuiz}
               onDeleteCachedQuiz={handleDeleteCachedQuiz}
               isOffline={isOffline}
+              onNavigate={(target) => setScreen(target)}
+              onSwitchProfile={handleSwitchProfile}
+              onLogout={handleLogout}
+              pendingMissionsCount={profileAssignments.length}
+              currentScreen={screen}
             />
           </div>
         )}
-        <div className={(screen === 'setup' || screen === 'auth') && !focusMode ? (user && stats.activeProfileId ? 'lg:col-span-8' : 'lg:col-span-12') : 'lg:col-span-12'}>
+        <div className={(screen === 'setup' || screen === 'missions' || screen === 'auth') && !focusMode ? (user && stats.activeProfileId ? 'lg:col-span-8' : 'lg:col-span-12') : 'lg:col-span-12'}>
           <AnimatePresence mode="wait">
             {screen === 'auth' && (
               <motion.div 
@@ -1200,6 +1251,24 @@ export default function App() {
                 transition={{ duration: 0.4 }}
               >
                 <ExpansionWizard onBack={() => setScreen('setup')} />
+              </motion.div>
+            )}
+
+            {screen === 'missions' && (
+              <motion.div
+                key="missions"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 20 }}
+                transition={{ duration: 0.4 }}
+              >
+                <TeacherMissions 
+                  assignments={profileAssignments}
+                  isLoading={isLoadingAssignments}
+                  activeProfile={activeProfile}
+                  onStartMission={handleStartAssignment}
+                  onBackToGenerator={() => setScreen('setup')}
+                />
               </motion.div>
             )}
           </AnimatePresence>

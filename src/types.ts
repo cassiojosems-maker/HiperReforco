@@ -38,6 +38,7 @@ export interface SpecialistAssignment {
   status: 'pending' | 'completed';
   assignedAt: string;
   completedAt?: string;
+  remindedAt?: string;
   studentResponses?: {
     questionId: string;
     answer: string;

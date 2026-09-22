@@ -2,6 +2,10 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // =========================================================================
+    // FUNÇÕES AUXILIARES DE AUTENTICAÇÃO E AUTORIZAÇÃO
+    // =========================================================================
+
     function isAuthenticated() {
       return request.auth != null;
     }
@@ -10,67 +14,217 @@ service cloud.firestore {
       return isAuthenticated() && request.auth.uid == userId;
     }
 
-    // A autorização de especialista depende exclusivamente da Custom Claim 'specialist: true'
+    // Regra 1 e 2: Autorização de especialista baseada estritamente na Custom Claim
+    // NUNCA utiliza users/{uid}.role como fonte de autorização
     function isSpecialist() {
       return isAuthenticated() && request.auth.token.specialist == true;
     }
 
+    // Regra 7: Verifica se o especialista possui vínculo autorizado com o aluno
+    function isLinkedSpecialistForUser(userId) {
+      return isSpecialist() && exists(/databases/$(database)/documents/users/$(userId)) && (
+        get(/databases/$(database)/documents/users/$(userId)).data.get('assignedSpecialist', '') == request.auth.uid ||
+        get(/databases/$(database)/documents/users/$(userId)).data.get('specialistId', '') == request.auth.uid
+      );
+    }
+
+    // Verifica se o documento de usuário possui vínculo com o especialista
+    function isAssignedSpecialistToDoc() {
+      return isSpecialist() && (
+        resource.data.get('assignedSpecialist', '') == request.auth.uid ||
+        resource.data.get('specialistId', '') == request.auth.uid
+      );
+    }
+
+    // Regra 3, 4 e 5: Validação estrita de atualização de perfil pelo usuário comum
+    // Impede alteração de role, uid, email, xp, level, streak, badges, specialistId, etc.
+    function isAllowedUserUpdate() {
+      let affected = request.resource.data.diff(resource.data).affectedKeys();
+      
+      // Apenas campos de perfil não privilegiados são permitidos
+      let allowedKeys = [
+        'displayName',
+        'avatarUrl',
+        'activeProfileId',
+        'profiles',
+        'gender',
+        'activeProfile',
+        'lastPlayed',
+        'reminderEnabled',
+        'reminderTime',
+        'reminderMessage',
+        'activeTrail',
+        'r4Alerts'
+      ].toSet();
+
+      // Campos estritamente proibidos para alteração pelo usuário comum
+      let forbiddenKeys = [
+        'role',
+        'uid',
+        'email',
+        'xp',
+        'level',
+        'streak',
+        'totalCorrect',
+        'totalQuestions',
+        'badges',
+        'assignedSpecialist',
+        'specialistId',
+        'permissions',
+        'specialist'
+      ].toSet();
+
+      return !affected.hasAny(forbiddenKeys) && affected.hasOnly(allowedKeys);
+    }
+
+    // Regra 9 e 10: Validação de atualização de atividade pelo aluno
+    function isAllowedStudentAssignmentUpdate() {
+      let affected = request.resource.data.diff(resource.data).affectedKeys();
+      let allowedKeys = ['status', 'completedAt', 'studentResponses'].toSet();
+      let forbiddenKeys = [
+        'specialistId',
+        'studentId',
+        'questions',
+        'assignedAt',
+        'xp',
+        'specialistName',
+        'subject',
+        'topic'
+      ].toSet();
+
+      return !affected.hasAny(forbiddenKeys)
+        && affected.hasOnly(allowedKeys)
+        && request.resource.data.status in ['pending', 'completed'];
+    }
+
+    // Validação de atualização de atividade pelo especialista responsável
+    function isAllowedSpecialistAssignmentUpdate() {
+      let affected = request.resource.data.diff(resource.data).affectedKeys();
+      return resource.data.specialistId == request.auth.uid
+        && !affected.hasAny(['specialistId', 'studentId'].toSet());
+    }
+
+    // =========================================================================
+    // COLEÇÃO: USERS E SUBCOLEÇÕES
+    // =========================================================================
+
     match /users/{userId} {
-      allow read: if isOwner(userId) || isSpecialist();
+      // Regra 7: O especialista só lê alunos com vínculo autorizado. O aluno lê o próprio perfil.
+      allow read: if isOwner(userId) || isAssignedSpecialistToDoc();
 
-      // Criação inicial: cliente só pode registrar role como 'parent' ou 'student' (nunca 'specialist')
-      allow create: if isOwner(userId) && 
+      // Regra 6 e 5: Criação inicial apenas do próprio documento.
+      // Papel só pode ser 'parent' ou 'student', nunca 'specialist'.
+      allow create: if isOwner(userId) &&
+        request.resource.data.uid == userId &&
         (!('role' in request.resource.data) || request.resource.data.role == 'parent' || request.resource.data.role == 'student') &&
-        (!('specialist' in request.resource.data));
+        (!('specialist' in request.resource.data)) &&
+        (!('assignedSpecialist' in request.resource.data)) &&
+        (!('specialistId' in request.resource.data)) &&
+        (!('permissions' in request.resource.data)) &&
+        (!('xp' in request.resource.data) || request.resource.data.xp == 0) &&
+        (!('level' in request.resource.data) || request.resource.data.level <= 1);
 
-      // Atualização: cliente não pode alterar o campo 'role' para se promover a especialista
-      allow update: if isOwner(userId) &&
-        (!('role' in request.resource.data) || request.resource.data.role == resource.data.role) &&
-        (isSpecialist() || request.resource.data.role != 'specialist');
+      // Regra 3, 4 e 5: Atualização controlada impedindo elevação de privilégios ou adulteração de gamificação
+      allow update: if isOwner(userId) && isAllowedUserUpdate();
 
+      // Exclusão de conta desativada diretamente via client
       allow delete: if false;
 
-      match /history/{historyId} {
-        allow read: if isOwner(userId) || isSpecialist();
-        allow write: if isOwner(userId);
-      }
-
-      match /badges/{badgeId} {
-        allow read: if isOwner(userId) || isSpecialist();
-        allow write: if isOwner(userId);
-      }
-
-      match /comments/{commentId} {
-        allow read: if isOwner(userId) || isSpecialist();
-        // Somente quem possui a claim specialist: true pode emitir ou gerenciar pareceres
-        allow create, update, delete: if isSpecialist();
-      }
-
-      match /trails/{trailId} {
-        allow read: if isOwner(userId) || isSpecialist();
-        allow write: if isOwner(userId) || isSpecialist();
-      }
-
+      // -----------------------------------------------------------------------
+      // SUBCOLEÇÃO: ASSIGNMENTS (Atividades de Especialistas)
+      // -----------------------------------------------------------------------
       match /assignments/{assignmentId} {
-        allow read: if isOwner(userId) || isSpecialist();
-        allow create, delete: if isSpecialist();
-        allow update: if isSpecialist() || isOwner(userId);
+        // Regra 7 e 8: Aluno só lê atividades sob seu próprio UID.
+        // Especialista só lê se possuir vínculo autorizado ou for o autor da atividade.
+        allow read: if isOwner(userId) || (isSpecialist() && (resource.data.specialistId == request.auth.uid || isLinkedSpecialistForUser(userId)));
+
+        // Criação: Apenas especialista com vínculo autorizado com o aluno
+        allow create: if isSpecialist() &&
+          request.resource.data.specialistId == request.auth.uid &&
+          isLinkedSpecialistForUser(userId) &&
+          request.resource.data.status == 'pending' &&
+          ('studentId' in request.resource.data) &&
+          ('questions' in request.resource.data);
+
+        // Regra 9 e 10: Atualização particionada por papel
+        allow update: if (isOwner(userId) && isAllowedStudentAssignmentUpdate()) ||
+                         (isSpecialist() && isAllowedSpecialistAssignmentUpdate());
+
+        // Exclusão: Apenas o especialista autor da atividade
+        allow delete: if isSpecialist() && resource.data.specialistId == request.auth.uid;
       }
 
+      // -----------------------------------------------------------------------
+      // SUBCOLEÇÃO: COMMENTS (Orientações e Pareceres)
+      // -----------------------------------------------------------------------
+      match /comments/{commentId} {
+        allow read: if isOwner(userId) || (isSpecialist() && (resource.data.specialistId == request.auth.uid || isLinkedSpecialistForUser(userId)));
+        allow create: if isSpecialist() &&
+          request.resource.data.specialistId == request.auth.uid &&
+          isLinkedSpecialistForUser(userId);
+        allow update, delete: if isSpecialist() && resource.data.specialistId == request.auth.uid;
+      }
+
+      // -----------------------------------------------------------------------
+      // SUBCOLEÇÃO: HISTORY (Histórico de Quizzes)
+      // -----------------------------------------------------------------------
+      match /history/{historyId} {
+        allow read: if isOwner(userId) || isLinkedSpecialistForUser(userId);
+        // Criação pelo aluno autenticado com validação do identificador
+        allow create: if isOwner(userId) && request.resource.data.userId == userId;
+        // Aluno pode apenas arquivar um item de histórico
+        allow update: if isOwner(userId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isArchived'].toSet());
+        allow delete: if false;
+      }
+
+      // -----------------------------------------------------------------------
+      // SUBCOLEÇÃO: BADGES (Conquistas/Medalhas)
+      // -----------------------------------------------------------------------
+      match /badges/{badgeId} {
+        allow read: if isOwner(userId) || isLinkedSpecialistForUser(userId);
+        allow create: if isOwner(userId) && request.resource.data.userId == userId &&
+          ('badgeId' in request.resource.data) && ('name' in request.resource.data);
+        allow update, delete: if false;
+      }
+
+      // -----------------------------------------------------------------------
+      // SUBCOLEÇÃO: TRAILS (Trilhas de Aprendizagem)
+      // -----------------------------------------------------------------------
+      match /trails/{trailId} {
+        allow read: if isOwner(userId) || isLinkedSpecialistForUser(userId);
+        allow create, update: if isOwner(userId) || isLinkedSpecialistForUser(userId);
+        allow delete: if isOwner(userId) || isLinkedSpecialistForUser(userId);
+      }
+
+      // -----------------------------------------------------------------------
+      // SUBCOLEÇÃO: PROGRESS (Rascunho de Quizzes em Andamento)
+      // -----------------------------------------------------------------------
       match /progress/{progressId} {
         allow read, write: if isOwner(userId);
       }
 
+      // -----------------------------------------------------------------------
+      // SUBCOLEÇÃO: MATERIALS (Materiais Anexados)
+      // -----------------------------------------------------------------------
       match /materials/{materialId} {
-        allow read: if isOwner(userId) || isSpecialist();
-        allow write: if isOwner(userId);
+        allow read: if isOwner(userId) || isLinkedSpecialistForUser(userId);
+        allow create, delete: if isOwner(userId);
+        allow update: if false;
       }
     }
 
+    // =========================================================================
+    // COLEÇÃO: LEADERBOARD (Placar de Líderes)
+    // =========================================================================
     match /leaderboard/{entryUserId} {
       allow read: if isAuthenticated();
-      allow write: if isOwner(entryUserId);
+      allow create: if isOwner(entryUserId) &&
+        request.resource.data.keys().hasOnly(['name', 'xp', 'level', 'avatarUrl', 'updatedAt'].toSet());
+      allow update: if isOwner(entryUserId) &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'xp', 'level', 'avatarUrl', 'updatedAt'].toSet());
+      allow delete: if false;
     }
   }
 }
+
 
