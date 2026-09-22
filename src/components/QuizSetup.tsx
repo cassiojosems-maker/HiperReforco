@@ -304,50 +304,6 @@ export default function QuizSetup({
         <p className="text-slate-500">Transformando seu hiperfoco em super aprendizado!</p>
       </div>
 
-      {/* Assignments Section */}
-      {assignments.length > 0 && (
-        <div className="mb-8 space-y-4">
-          <div className="flex items-center gap-2 px-2">
-            <ClipboardCheck size={20} className="text-indigo-500" />
-            <h2 className="font-bold text-slate-800">Missões do Professor</h2>
-          </div>
-          
-          {assignments.map(assignment => {
-            const isReminded = !!(assignment as any).remindedAt;
-            return (
-            <div key={assignment.id} className={`glass-card p-6 rounded-3xl ${isReminded ? 'bg-amber-50/50 border-amber-300 ring-4 ring-amber-100/50 relative' : 'bg-indigo-50/50 border-indigo-100'} flex flex-col md:flex-row md:items-center justify-between gap-4 transition-all`}>
-              <div className="flex items-start gap-4">
-                <div className={`w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-sm shrink-0 ${isReminded ? 'text-amber-500' : 'text-indigo-600'}`}>
-                  <Play size={20} fill="currentColor" />
-                </div>
-                <div className="space-y-1">
-                  <div className={`text-sm font-bold ${isReminded ? 'text-amber-900' : 'text-indigo-900'}`}>Atividade: {assignment.topic}</div>
-                  <div className={`text-xs ${isReminded ? 'text-amber-700' : 'text-indigo-600'}`}>Assinado por: {assignment.specialistName}</div>
-                  {isReminded && (
-                    <div className="text-[10px] font-bold text-amber-700 bg-amber-100/80 border border-amber-200 px-3 py-1 rounded-full inline-block mt-1">
-                      🚀 Seu professor está esperando por você nesta missão!
-                    </div>
-                  )}
-                </div>
-              </div>
-              <button 
-                onClick={() => onStartAssignment?.(assignment)}
-                className={`px-6 py-3 font-bold rounded-2xl shadow-lg flex items-center justify-center gap-2 transition-all active:scale-95 ${isReminded ? 'bg-amber-500 hover:bg-amber-600 text-white shadow-amber-200 animate-pulse' : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-100'}`}
-              >
-                Começar Missão
-                <ChevronRight size={18} />
-              </button>
-            </div>
-            );
-          })}
-        </div>
-      )}
-
-
-      {/* Shared Space / Assignments Header */}
-      {/* ... previous code ... */}
-
-
       <form onSubmit={handleSubmit} className="glass-card p-8 rounded-3xl space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-2">

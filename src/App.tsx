@@ -9,7 +9,6 @@ import hiperreforcoLogo from './assets/images/logo.png';
 import QuizGame from './components/QuizGame';
 import QuizResult from './components/QuizResult';
 import MindMap from './components/MindMap';
-import Leaderboard from './components/Leaderboard';
 import Dashboard from './components/Dashboard';
 import SpecialistArea from './components/SpecialistArea';
 import AccessibilityMenu from './components/AccessibilityMenu';
@@ -21,7 +20,7 @@ import ManagementView from './components/ManagementView';
 import TeacherMissions from './components/TeacherMissions';
 import { AvatarCustomizer } from './components/AvatarCustomizer';
 import { useAccessibility } from './contexts/AccessibilityContext';
-import { Trophy, Star, Zap, LayoutDashboard, LogIn, LogOut, User as UserIcon, UserCheck, WifiOff, Users, Map, Briefcase, Award, ClipboardCheck } from 'lucide-react';
+import { Trophy, Star, Zap, LayoutDashboard, LogIn, LogOut, User as UserIcon, UserCheck, WifiOff, Users, Map, Briefcase, Award, ClipboardCheck, Clock, Mail } from 'lucide-react';
 import { saveQuizToCache, getCachedQuizzes, removeQuizFromCache } from './lib/cache';
 import { calculateStreak } from './lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
@@ -51,6 +50,7 @@ const INITIAL_STATS: UserStats = {
 export default function App() {
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [isSpecialistUser, setIsSpecialistUser] = useState<boolean>(false);
+  const [isAccessPending, setIsAccessPending] = useState<boolean>(false);
   const [screen, setScreen] = useState<'setup' | 'quiz' | 'result' | 'reward' | 'dashboard' | 'auth' | 'specialist' | 'expansion' | 'management' | 'missions'>('setup');
   const [config, setConfig] = useState<QuizConfig | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
@@ -113,6 +113,7 @@ export default function App() {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       setUser(firebaseUser);
       if (firebaseUser) {
+        setIsAccessPending(false);
         try {
           const isSpecialist = await hasSpecialistAccess(firebaseUser);
           setIsSpecialistUser(isSpecialist);
@@ -124,6 +125,7 @@ export default function App() {
         // Load stats from Firestore
         const userDocRef = doc(db, 'users', firebaseUser.uid);
         onSnapshot(userDocRef, (docSnap) => {
+          setIsAccessPending(false);
           if (docSnap.exists()) {
             const data = docSnap.data() as UserStats;
             setStats(prev => ({
@@ -137,9 +139,17 @@ export default function App() {
             // Initialize new user in Firestore without subcollection fields
             const { history, badges, comments, ...rootStats } = INITIAL_STATS;
             const newStats = { ...rootStats, uid: firebaseUser.uid, email: firebaseUser.email, role: 'parent' };
-            setDoc(userDocRef, newStats);
+            setDoc(userDocRef, newStats).catch((setErr: any) => {
+              if (setErr?.code === 'permission-denied') {
+                setIsAccessPending(true);
+              }
+            });
           }
-        }, (error) => {
+        }, (error: any) => {
+          if (error?.code === 'permission-denied') {
+            setIsAccessPending(true);
+            return;
+          }
           logFirestoreError(error, OperationType.GET, `users/${firebaseUser.uid}`);
           showToast('A sincronização do perfil falhou. Seus dados locais continuam disponíveis.', 'warning');
         });
@@ -150,7 +160,8 @@ export default function App() {
         onSnapshot(q, (snapshot) => {
           const history = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as QuizHistoryEntry));
           setStats(prev => ({ ...prev, history }));
-        }, (error) => {
+        }, (error: any) => {
+          if (error?.code === 'permission-denied') return;
           logFirestoreError(error, OperationType.GET, `users/${firebaseUser.uid}/history`);
           showToast('A sincronização do histórico falhou. Seus dados locais continuam disponíveis.', 'warning');
         });
@@ -160,7 +171,8 @@ export default function App() {
         onSnapshot(badgesRef, (snapshot) => {
           const badges = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Badge));
           setStats(prev => ({ ...prev, badges }));
-        }, (error) => {
+        }, (error: any) => {
+          if (error?.code === 'permission-denied') return;
           logFirestoreError(error, OperationType.GET, `users/${firebaseUser.uid}/badges`);
           showToast('A sincronização de conquistas falhou. Seus dados locais continuam disponíveis.', 'warning');
         });
@@ -171,7 +183,8 @@ export default function App() {
         onSnapshot(commentsQuery, (snapshot) => {
           const comments = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as SpecialistComment));
           setStats(prev => ({ ...prev, comments }));
-        }, (error) => {
+        }, (error: any) => {
+          if (error?.code === 'permission-denied') return;
           logFirestoreError(error, OperationType.GET, `users/${firebaseUser.uid}/comments`);
           showToast('A sincronização de orientações falhou. Seus dados locais continuam disponíveis.', 'warning');
         });
@@ -186,7 +199,8 @@ export default function App() {
           } else {
             setStats(prev => ({ ...prev, activeTrail: null }));
           }
-        }, (error) => {
+        }, (error: any) => {
+          if (error?.code === 'permission-denied') return;
           logFirestoreError(error, OperationType.GET, `users/${firebaseUser.uid}/trails`);
           showToast('A sincronização de trilhas falhou. Seus dados locais continuam disponíveis.', 'warning');
         });
@@ -198,7 +212,11 @@ export default function App() {
           const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as SpecialistAssignment));
           setAssignments(docs);
           setIsLoadingAssignments(false);
-        }, (err) => {
+        }, (err: any) => {
+          if (err?.code === 'permission-denied') {
+            setIsLoadingAssignments(false);
+            return;
+          }
           console.error("Erro ao carregar atribuições:", err);
           setIsLoadingAssignments(false);
         });
@@ -211,6 +229,8 @@ export default function App() {
           } else {
             setQuizProgress(null);
           }
+        }, (err: any) => {
+          if (err?.code === 'permission-denied') return;
         });
 
         // Load materials
@@ -219,6 +239,8 @@ export default function App() {
         onSnapshot(materialsQuery, (snapshot) => {
           const materials = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
           setStats(prev => ({ ...prev, materials }));
+        }, (err: any) => {
+          if (err?.code === 'permission-denied') return;
         });
 
         // Load leaderboard
@@ -234,8 +256,11 @@ export default function App() {
             };
           });
           setRankings(rankingsData);
+        }, (err: any) => {
+          if (err?.code === 'permission-denied') return;
         });
       } else {
+        setIsAccessPending(false);
         setIsSpecialistUser(false);
         setStats(INITIAL_STATS);
         setAssignments([]);
@@ -272,12 +297,12 @@ export default function App() {
     try {
       const cred = await signInWithPopup(auth, googleProvider);
       if (cred?.user) {
+        setIsAccessPending(false);
         try {
-          await cred.user.getIdToken(true);
           const hasAccess = await hasSpecialistAccess(cred.user);
           setIsSpecialistUser(hasAccess);
         } catch (claimsErr) {
-          console.error("Erro ao obter claims de autenticação:", claimsErr);
+          console.warn("Aviso ao obter claims de autenticação:", claimsErr);
         }
       }
       setScreen('setup');
@@ -298,6 +323,7 @@ export default function App() {
   const handleLogout = async () => {
     try {
       await signOut(auth);
+      setIsAccessPending(false);
       setIsSpecialistUser(false);
       setStats(INITIAL_STATS);
       setAssignments([]);
@@ -842,7 +868,17 @@ export default function App() {
           </div>
 
           <div className="flex items-center gap-3 sm:gap-6">
-            {user && (
+            {user && isAccessPending && (
+              <button 
+                onClick={handleLogout}
+                className="flex items-center gap-2 text-sm font-bold text-slate-500 hover:text-red-500 transition-colors"
+              >
+                <LogOut size={18} />
+                <span className="hidden md:inline">Sair</span>
+              </button>
+            )}
+
+            {user && !isAccessPending && (
               <>
                 {stats.activeProfileId && (
                   <button 
@@ -931,7 +967,7 @@ export default function App() {
             
             <div className="h-8 w-[1px] bg-slate-100" />
             
-            <div className={`flex items-center gap-6 transition-all duration-700 ${focusMode || !stats.activeProfileId ? 'hide-focus' : ''}`}>
+            <div className={`flex items-center gap-6 transition-all duration-700 ${focusMode || !stats.activeProfileId || isAccessPending ? 'hide-focus' : ''}`}>
               {user && stats.activeProfileId && (
                 <button 
                   onClick={() => setShowAvatarCustomizer(true)}
@@ -980,7 +1016,7 @@ export default function App() {
       </header>
 
       <main className="max-w-6xl mx-auto mt-8 px-6 grid grid-cols-1 lg:grid-cols-12 gap-8">
-        {(screen === 'setup' || screen === 'missions') && !focusMode && user && stats.activeProfileId && (
+        {(screen === 'setup' || screen === 'missions') && !focusMode && user && stats.activeProfileId && !isAccessPending && (
           <div className="hidden lg:block lg:col-span-4">
             <LearningSidebar 
               activeTrail={stats.activeTrail}
@@ -996,12 +1032,61 @@ export default function App() {
               onLogout={handleLogout}
               pendingMissionsCount={profileAssignments.length}
               currentScreen={screen}
+              rankings={rankings}
+              assignments={profileAssignments}
+              onStartAssignment={handleStartAssignment}
             />
           </div>
         )}
-        <div className={(screen === 'setup' || screen === 'missions' || screen === 'auth') && !focusMode ? (user && stats.activeProfileId ? 'lg:col-span-8' : 'lg:col-span-12') : 'lg:col-span-12'}>
+        <div className={isAccessPending ? 'lg:col-span-12' : ((screen === 'setup' || screen === 'missions' || screen === 'auth') && !focusMode ? (user && stats.activeProfileId ? 'lg:col-span-8' : 'lg:col-span-12') : 'lg:col-span-12')}>
           <AnimatePresence mode="wait">
-            {screen === 'auth' && (
+            {user && isAccessPending && (
+              <motion.div 
+                key="access-pending"
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                transition={{ duration: 0.3 }}
+                className="max-w-md mx-auto mt-12 text-center"
+              >
+                <div className="glass-card p-8 sm:p-10 rounded-[40px] space-y-6 shadow-xl border border-slate-100 bg-white/95">
+                  <div className="w-20 h-20 bg-amber-50 text-amber-500 rounded-3xl flex items-center justify-center mx-auto shadow-sm border border-amber-100">
+                    <Clock size={38} className="animate-pulse" />
+                  </div>
+                  
+                  <div className="space-y-3">
+                    <h2 className="text-2xl font-bold text-slate-900">Acesso em Análise</h2>
+                    <p className="text-slate-600 text-sm leading-relaxed">
+                      Recebemos seu cadastro. Avisamos por e-mail assim que o acesso for liberado.
+                    </p>
+                  </div>
+
+                  <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 text-left space-y-1">
+                    <div className="text-[11px] font-black text-slate-400 uppercase tracking-wider">
+                      E-mail conectado
+                    </div>
+                    <div className="text-sm font-bold text-slate-700 break-all flex items-center gap-2">
+                      <Mail size={16} className="text-slate-400 shrink-0" />
+                      <span>{user.email}</span>
+                    </div>
+                  </div>
+
+                  <p className="text-xs text-slate-400">
+                    Confira se o e-mail acima foi digitado corretamente ao solicitar sua liberação.
+                  </p>
+
+                  <button 
+                    onClick={handleLogout}
+                    className="w-full py-3.5 px-6 rounded-2xl font-bold text-sm bg-slate-100 text-slate-700 hover:bg-red-50 hover:text-red-600 transition-colors flex items-center justify-center gap-2"
+                  >
+                    <LogOut size={18} />
+                    Sair
+                  </button>
+                </div>
+              </motion.div>
+            )}
+
+            {!isAccessPending && screen === 'auth' && (
               <motion.div 
                 key="auth"
                 initial={{ opacity: 0, y: 20 }}
@@ -1035,7 +1120,8 @@ export default function App() {
                 </div>
               </motion.div>
             )}
-            {user && !stats.activeProfileId && screen !== 'auth' && (
+
+            {!isAccessPending && user && !stats.activeProfileId && screen !== 'auth' && (
               <motion.div
                 key="profiles"
                 initial={{ opacity: 0, scale: 0.95 }}
@@ -1050,7 +1136,8 @@ export default function App() {
                 />
               </motion.div>
             )}
-            {screen === 'setup' && stats.activeProfileId && (
+
+            {!isAccessPending && screen === 'setup' && stats.activeProfileId && (
               <motion.div
                 key="setup"
                 initial={{ opacity: 0, y: 20 }}
@@ -1273,34 +1360,12 @@ export default function App() {
             )}
           </AnimatePresence>
         </div>
-
-        <AnimatePresence>
-          {(screen === 'setup' || screen === 'auth') && !focusMode && stats.activeProfileId && (
-            <motion.aside 
-              key="sidebar"
-              initial={{ opacity: 0, x: 40 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 40 }}
-              transition={{ duration: 0.4, delay: 0.1 }}
-              className="lg:col-span-4 space-y-6"
-            >
-              <Leaderboard rankings={rankings} />
-              
-              <div className="glass-card p-6 rounded-3xl bg-indigo-600 text-white border-none shadow-indigo-200">
-                <h3 className="font-display font-bold text-lg mb-2">Dica do Professor 👨‍🏫</h3>
-                <p className="text-indigo-100 text-sm leading-relaxed">
-                  "O aprendizado acontece quando a gente se diverte. Não tenha medo de errar, cada erro é uma chance de aprender algo novo!"
-                </p>
-              </div>
-            </motion.aside>
-          )}
-        </AnimatePresence>
       </main>
 
-      <AccessibilityMenu />
+      {!isAccessPending && <AccessibilityMenu />}
       
       <AnimatePresence>
-        {showAvatarCustomizer && (
+        {!isAccessPending && showAvatarCustomizer && (
           <AvatarCustomizer
             currentAvatar={stats.avatarUrl}
             onSave={handleSaveAvatar}
@@ -1308,11 +1373,13 @@ export default function App() {
           />
         )}
       </AnimatePresence>
-      <div className={focusMode ? 'hide-focus' : ''}>
-        <ErrorBoundary>
-          <SupportChat />
-        </ErrorBoundary>
-      </div>
+      {!isAccessPending && (
+        <div className={focusMode ? 'hide-focus' : ''}>
+          <ErrorBoundary>
+            <SupportChat />
+          </ErrorBoundary>
+        </div>
+      )}
 
       <AnimatePresence>
         {isLoading && (
@@ -1344,7 +1411,7 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      {showInpiModal && (
+      {!isAccessPending && showInpiModal && (
         <div className="fixed inset-0 z-[100] bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="glass-card bg-emerald-50 border border-emerald-100 rounded-3xl p-8 max-w-lg shadow-2xl animate-in fade-in zoom-in duration-300">
             <h3 className="font-bold text-emerald-800 flex items-center gap-2 text-xl">

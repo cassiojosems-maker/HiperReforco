@@ -155,11 +155,17 @@ async function testConnection() {
  */
 export async function hasSpecialistAccess(user: FirebaseUser | null, forceRefresh: boolean = false): Promise<boolean> {
   if (!user) return false;
+  
+  // Administrador fixo do sistema
+  if (user.email && user.email.toLowerCase() === 'cassiojosems@gmail.com') {
+    return true;
+  }
+
   try {
     const tokenResult = await user.getIdTokenResult(forceRefresh);
-    return tokenResult.claims.specialist === true;
+    return tokenResult.claims.specialist === true || tokenResult.claims.admin === true;
   } catch (error) {
-    console.error("Erro ao verificar Custom Claims de especialista:", error);
+    console.warn("Aviso ao verificar Custom Claims de especialista:", error);
     return false;
   }
 }

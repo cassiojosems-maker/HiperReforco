@@ -11,9 +11,11 @@ import {
   LayoutDashboard, 
   Compass, 
   Users, 
-  LogOut 
+  LogOut,
+  Play
 } from 'lucide-react';
-import { LearningTrail, CachedQuiz } from '../types';
+import { LearningTrail, CachedQuiz, RankingEntry, SpecialistAssignment } from '../types';
+import Leaderboard from './Leaderboard';
 
 interface LearningSidebarProps {
   activeTrail: LearningTrail | null;
@@ -29,6 +31,9 @@ interface LearningSidebarProps {
   onLogout?: () => void;
   pendingMissionsCount?: number;
   currentScreen?: string;
+  rankings?: RankingEntry[];
+  assignments?: SpecialistAssignment[];
+  onStartAssignment?: (assignment: SpecialistAssignment) => void;
 }
 
 export default function LearningSidebar({
@@ -44,7 +49,10 @@ export default function LearningSidebar({
   onSwitchProfile,
   onLogout,
   pendingMissionsCount = 0,
-  currentScreen = 'setup'
+  currentScreen = 'setup',
+  rankings = [],
+  assignments = [],
+  onStartAssignment
 }: LearningSidebarProps) {
   return (
     <div className="space-y-6">
@@ -273,53 +281,97 @@ export default function LearningSidebar({
         )}
       </div>
 
-      {/* Missões do Professor - Item posicionado imediatamente abaixo de Salvos Offline */}
-      <div className="space-y-4">
+      {/* Missão do Professor - abaixo das atividades salvas e acima do ranking */}
+      <div id="teacher-missions-sidebar" className="space-y-4">
         <div className="flex items-center justify-between px-2">
           <div className="flex items-center gap-2">
             <ClipboardCheck size={20} className="text-indigo-600" />
-            <h2 className="font-bold text-slate-800">Missões do Professor</h2>
+            <h2 className="font-bold text-slate-800">Missão do Professor</h2>
           </div>
-          {pendingMissionsCount > 0 && (
-            <span className="text-xs px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 font-bold border border-indigo-200 animate-pulse">
-              {pendingMissionsCount} {pendingMissionsCount === 1 ? 'pendente' : 'pendentes'}
+          {assignments.length > 0 && (
+            <span className="text-xs px-2.5 py-0.5 rounded-full bg-indigo-100 text-indigo-700 font-bold border border-indigo-200 animate-pulse">
+              {assignments.length} {assignments.length === 1 ? 'pendente' : 'pendentes'}
             </span>
           )}
         </div>
 
-        <div className="glass-card p-5 rounded-3xl bg-white border border-slate-100 shadow-sm space-y-3">
-          {pendingMissionsCount > 0 ? (
-            <>
-              <div className="space-y-1">
-                <p className="text-xs text-slate-700 font-medium leading-relaxed">
-                  Você tem <strong className="text-indigo-700 font-bold">{pendingMissionsCount}</strong> {pendingMissionsCount === 1 ? 'atividade enviada' : 'atividades enviadas'} por professores ou especialistas.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => onNavigate?.('missions')}
-                className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-md shadow-indigo-100 flex items-center justify-center gap-2 transition-all active:scale-95"
-              >
-                <span>Ver Missões</span>
-                <ChevronRight size={16} />
-              </button>
-            </>
-          ) : (
-            <>
-              <p className="text-xs text-slate-500 leading-relaxed">
-                Nenhuma missão pendente no momento.
-              </p>
-              <button
-                type="button"
-                onClick={() => onNavigate?.('missions')}
-                className="w-full py-2 bg-slate-50 hover:bg-indigo-50 text-indigo-700 font-semibold text-xs rounded-xl border border-slate-200/60 transition-all flex items-center justify-center gap-1.5"
-              >
-                <span>Abrir Missões do Professor</span>
-                <ChevronRight size={14} />
-              </button>
-            </>
-          )}
-        </div>
+        {assignments.length > 0 ? (
+          <div className="space-y-3">
+            {assignments.map((assignment) => {
+              const isReminded = !!(assignment as any).remindedAt;
+              return (
+                <div 
+                  key={assignment.id} 
+                  className={`glass-card p-4 rounded-3xl transition-all border ${
+                    isReminded 
+                      ? 'bg-amber-50/70 border-amber-300 ring-2 ring-amber-200/50' 
+                      : 'bg-indigo-50/50 border-indigo-100 hover:border-indigo-200'
+                  } space-y-3 shadow-sm`}
+                >
+                  <div className="flex items-start gap-3">
+                    <div className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 shadow-sm ${
+                      isReminded ? 'bg-white text-amber-500' : 'bg-white text-indigo-600'
+                    }`}>
+                      <Play size={18} fill="currentColor" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className={`text-sm font-bold leading-tight ${
+                        isReminded ? 'text-amber-950' : 'text-indigo-950'
+                      }`}>
+                        Atividade: {assignment.topic}
+                      </div>
+                      <div className={`text-xs mt-0.5 ${
+                        isReminded ? 'text-amber-700' : 'text-indigo-600'
+                      }`}>
+                        Assinado por: {assignment.specialistName}
+                      </div>
+                      {isReminded && (
+                        <div className="text-[10px] font-bold text-amber-700 bg-amber-100/90 border border-amber-200 px-2 py-0.5 rounded-full inline-block mt-1.5">
+                          🚀 Professor aguardando sua resposta!
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-200/40">
+                    <span className="text-[10px] font-bold px-2 py-0.5 bg-white/80 rounded-lg text-slate-500 uppercase">
+                      {assignment.subject} • {assignment.questions?.length || 0} q
+                    </span>
+                    <button 
+                      type="button"
+                      onClick={() => onStartAssignment?.(assignment)}
+                      className={`px-3.5 py-1.5 font-bold text-xs rounded-xl shadow-md flex items-center gap-1.5 transition-all active:scale-95 ${
+                        isReminded 
+                          ? 'bg-amber-500 hover:bg-amber-600 text-white shadow-amber-200 animate-pulse' 
+                          : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-100'
+                      }`}
+                    >
+                      <span>Começar Missão</span>
+                      <ChevronRight size={14} />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="glass-card p-5 rounded-3xl bg-slate-50 border border-slate-200 text-center">
+            <p className="text-xs text-slate-500">Nenhuma missão pendente no momento.</p>
+          </div>
+        )}
+      </div>
+
+      {/* Ranking da Turma - Posicionado na coluna esquerda abaixo de Missão do Professor */}
+      <div className="space-y-4">
+        <Leaderboard rankings={rankings} />
+      </div>
+
+      {/* Dica do Professor */}
+      <div className="glass-card p-6 rounded-3xl bg-indigo-600 text-white border-none shadow-indigo-200">
+        <h3 className="font-display font-bold text-lg mb-2">Dica do Professor 👨‍🏫</h3>
+        <p className="text-indigo-100 text-sm leading-relaxed">
+          "O aprendizado acontece quando a gente se diverte. Não tenha medo de errar, cada erro é uma chance de aprender algo novo!"
+        </p>
       </div>
     </div>
   );

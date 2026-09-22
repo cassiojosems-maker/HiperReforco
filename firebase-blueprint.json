@@ -124,9 +124,25 @@
         "type": { "type": "string" }
       },
       "required": ["userId", "fileName", "downloadURL", "uploadedAt"]
+    },
+    "AllowlistEntry": {
+      "title": "AllowlistEntry",
+      "description": "Entrada na lista de e-mails autorizados para acesso ao sistema",
+      "type": "object",
+      "properties": {
+        "ativo": { "type": "boolean" },
+        "nome": { "type": "string" },
+        "turma": { "type": "string" },
+        "liberadoEm": { "type": "string" }
+      },
+      "required": ["ativo"]
     }
   },
   "firestore": {
+    "/allowlist/{email}": {
+      "schema": "AllowlistEntry",
+      "description": "Lista de e-mails autorizados para controle de acesso"
+    },
     "/users/{userId}": {
       "schema": "User",
       "description": "Dados do perfil do usuário"
