@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
-import { QuizConfig, Difficulty, LearningTrail, SpecialistAssignment, CachedQuiz } from '../types';
-import { BookOpen, Target, Layers, Hash, Play, Zap, GraduationCap, Map, ChevronRight, Star, PlusCircle, HelpCircle, FileText, Upload, X, ClipboardCheck, Loader2, Trash2, WifiOff, Sparkles, Smile } from 'lucide-react';
+import { QuizConfig, Difficulty, LearningTrail, CachedQuiz } from '../types';
+import { BookOpen, Target, Layers, Hash, Play, Zap, GraduationCap, Map, ChevronRight, Star, PlusCircle, HelpCircle, FileText, Upload, X, Loader2, Trash2, WifiOff, Sparkles, Smile } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import * as mammoth from 'mammoth';
 import { checkInappropriateContent, analyzeDocumentContent } from '../services/geminiService';
@@ -51,8 +51,6 @@ interface QuizSetupProps {
   activeTrail: LearningTrail | null;
   onStartTrail: (trail: LearningTrail) => void;
   onDeleteTrail?: () => void;
-  assignments?: SpecialistAssignment[];
-  onStartAssignment?: (assignment: SpecialistAssignment) => void;
   cachedQuizzes?: CachedQuiz[];
   onStartCachedQuiz?: (quiz: CachedQuiz) => void;
   isOffline?: boolean;
@@ -82,8 +80,6 @@ export default function QuizSetup({
   activeTrail, 
   onStartTrail, 
   onDeleteTrail, 
-  assignments = [], 
-  onStartAssignment,
   cachedQuizzes = [],
   onStartCachedQuiz,
   isOffline = false,
@@ -297,14 +293,14 @@ export default function QuizSetup({
     <motion.div 
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="max-w-2xl mx-auto p-6"
+      className="max-w-2xl mx-auto p-2 sm:p-6 space-y-6"
     >
-      <div className="text-center mb-8">
+      <div className="text-center mb-6">
         <h1 className="text-4xl font-bold text-slate-900 mb-2">HiperReforço</h1>
         <p className="text-slate-500">Transformando seu hiperfoco em super aprendizado!</p>
       </div>
 
-      <form onSubmit={handleSubmit} className="glass-card p-8 rounded-3xl space-y-6">
+      <form onSubmit={handleSubmit} className="glass-card p-6 sm:p-8 rounded-3xl space-y-6 bg-white border border-slate-100 shadow-sm">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-2">
             <label className="flex items-center gap-2 text-sm font-semibold text-slate-700">

@@ -17,7 +17,6 @@ import SupportChat from './components/SupportChat';
 import ExpansionWizard from './components/ExpansionWizard';
 import LearningSidebar from './components/LearningSidebar';
 import ManagementView from './components/ManagementView';
-import TeacherMissions from './components/TeacherMissions';
 import { AvatarCustomizer } from './components/AvatarCustomizer';
 import { useAccessibility } from './contexts/AccessibilityContext';
 import { Trophy, Star, Zap, LayoutDashboard, LogIn, LogOut, User as UserIcon, UserCheck, WifiOff, Users, Map, Briefcase, Award, ClipboardCheck, Clock, Mail } from 'lucide-react';
@@ -51,7 +50,7 @@ export default function App() {
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [isSpecialistUser, setIsSpecialistUser] = useState<boolean>(false);
   const [isAccessPending, setIsAccessPending] = useState<boolean>(false);
-  const [screen, setScreen] = useState<'setup' | 'quiz' | 'result' | 'reward' | 'dashboard' | 'auth' | 'specialist' | 'expansion' | 'management' | 'missions'>('setup');
+  const [screen, setScreen] = useState<'setup' | 'quiz' | 'result' | 'reward' | 'dashboard' | 'auth' | 'specialist' | 'expansion' | 'management'>('setup');
   const [config, setConfig] = useState<QuizConfig | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [rewardQuestions, setRewardQuestions] = useState<Question[]>([]);
@@ -883,7 +882,7 @@ export default function App() {
                 {stats.activeProfileId && (
                   <button 
                     onClick={handleSwitchProfile}
-                    className="flex items-center gap-2 text-sm font-bold text-slate-500 hover:text-primary transition-colors"
+                    className="flex items-center gap-1.5 text-sm font-bold text-slate-500 hover:text-primary transition-colors"
                     title="Trocar Perfil"
                   >
                     <Users size={18} />
@@ -893,62 +892,48 @@ export default function App() {
                 
                 <button 
                   onClick={() => setScreen('dashboard')}
-                  className={`flex items-center gap-2 text-sm font-bold transition-colors ${screen === 'dashboard' ? 'text-primary' : 'text-slate-500 hover:text-primary'}`}
+                  className={`flex items-center gap-1.5 text-sm font-bold transition-colors ${screen === 'dashboard' ? 'text-indigo-600' : 'text-slate-500 hover:text-indigo-600'}`}
                 >
                   <LayoutDashboard size={18} />
                   <span className="hidden md:inline">Painel</span>
                 </button>
                 
+                {isSpecialistUser && (
+                  <button 
+                    onClick={() => setScreen(screen === 'specialist' ? 'setup' : 'specialist')}
+                    className={`flex items-center gap-1.5 text-sm font-bold transition-colors ${screen === 'specialist' ? 'text-indigo-600' : 'text-indigo-600 hover:text-indigo-700'}`}
+                    title={screen === 'specialist' ? 'Voltar para Início' : 'Modo Especialista'}
+                  >
+                    <UserCheck size={18} />
+                    <span className="hidden md:inline">Modo Especialista</span>
+                  </button>
+                )}
+
                 <button 
                   onClick={() => setScreen('expansion')}
-                  className={`flex items-center gap-2 text-sm font-bold transition-colors ${screen === 'expansion' ? 'text-indigo-600' : 'text-slate-500 hover:text-indigo-500'}`}
+                  className={`flex items-center gap-1.5 text-sm font-bold transition-colors ${screen === 'expansion' ? 'text-indigo-600' : 'text-slate-500 hover:text-indigo-500'}`}
                   title="Expansão de Hiperfocos"
                 >
                   <Map size={18} />
                   <span className="hidden md:inline">Expansão</span>
                 </button>
 
-                <button 
-                  onClick={() => setScreen('missions')}
-                  className={`flex items-center gap-2 text-sm font-bold transition-colors ${screen === 'missions' ? 'text-indigo-600' : 'text-slate-500 hover:text-indigo-500'}`}
-                  title="Missões do Professor"
-                >
-                  <ClipboardCheck size={18} />
-                  <span className="hidden md:inline">Missões</span>
-                  {profileAssignments.length > 0 && (
-                    <span className="px-1.5 py-0.5 bg-indigo-100 text-indigo-700 text-[10px] font-black rounded-full animate-pulse">
-                      {profileAssignments.length}
-                    </span>
-                  )}
-                </button>
-
                 {isSpecialistUser && (
-                  <>
-                    <button 
-                      onClick={() => setScreen(screen === 'specialist' ? 'setup' : 'specialist')}
-                      className={`flex items-center gap-2 text-sm font-bold transition-colors ${screen === 'specialist' ? 'text-indigo-600' : 'text-slate-500 hover:text-indigo-500'}`}
-                      title={screen === 'specialist' ? 'Voltar para Início' : 'Área do Especialista'}
-                    >
-                      <UserCheck size={18} />
-                      <span className="hidden md:inline">Especialista</span>
-                    </button>
-
-                    <button 
-                      onClick={() => setScreen(screen === 'management' ? 'setup' : 'management')}
-                      className={`flex items-center gap-2 text-sm font-bold transition-colors ${screen === 'management' ? 'text-amber-500' : 'text-slate-500 hover:text-amber-500'}`}
-                      title="Visão de Gestão"
-                    >
-                      <Briefcase size={18} />
-                      <span className="hidden md:inline">Gestão</span>
-                    </button>
-                  </>
+                  <button 
+                    onClick={() => setScreen(screen === 'management' ? 'setup' : 'management')}
+                    className={`flex items-center gap-1.5 text-sm font-bold transition-colors ${screen === 'management' ? 'text-amber-500' : 'text-slate-500 hover:text-amber-500'}`}
+                    title="Visão de Gestão"
+                  >
+                    <Briefcase size={18} />
+                    <span className="hidden md:inline">Gestão</span>
+                  </button>
                 )}
                 
-                <div className="h-8 w-[1px] bg-slate-100" />
+                <div className="h-6 w-[1px] bg-slate-200" />
                 
                 <button 
                   onClick={handleLogout}
-                  className="flex items-center gap-2 text-sm font-bold text-slate-500 hover:text-red-500 transition-colors"
+                  className="flex items-center gap-1.5 text-sm font-bold text-slate-500 hover:text-red-500 transition-colors"
                 >
                   <LogOut size={18} />
                   <span className="hidden md:inline">Sair</span>
@@ -1016,29 +1001,20 @@ export default function App() {
       </header>
 
       <main className="max-w-6xl mx-auto mt-8 px-6 grid grid-cols-1 lg:grid-cols-12 gap-8">
-        {(screen === 'setup' || screen === 'missions') && !focusMode && user && stats.activeProfileId && !isAccessPending && (
+        {screen === 'setup' && !focusMode && user && stats.activeProfileId && !isAccessPending && (
           <div className="hidden lg:block lg:col-span-4">
             <LearningSidebar 
               activeTrail={stats.activeTrail}
-              onStartTrail={handleStartTrail}
               onContinueTrail={handleContinueTrail}
-              onDeleteTrail={handleDeleteTrail}
               cachedQuizzes={cachedQuizzes}
               onStartCachedQuiz={handleStartCachedQuiz}
               onDeleteCachedQuiz={handleDeleteCachedQuiz}
-              isOffline={isOffline}
-              onNavigate={(target) => setScreen(target)}
-              onSwitchProfile={handleSwitchProfile}
-              onLogout={handleLogout}
-              pendingMissionsCount={profileAssignments.length}
-              currentScreen={screen}
-              rankings={rankings}
               assignments={profileAssignments}
               onStartAssignment={handleStartAssignment}
             />
           </div>
         )}
-        <div className={isAccessPending ? 'lg:col-span-12' : ((screen === 'setup' || screen === 'missions' || screen === 'auth') && !focusMode ? (user && stats.activeProfileId ? 'lg:col-span-8' : 'lg:col-span-12') : 'lg:col-span-12')}>
+        <div className={isAccessPending ? 'lg:col-span-12' : ((screen === 'setup' || screen === 'auth') && !focusMode ? (user && stats.activeProfileId ? 'lg:col-span-8' : 'lg:col-span-12') : 'lg:col-span-12')}>
           <AnimatePresence mode="wait">
             {user && isAccessPending && (
               <motion.div 
@@ -1165,8 +1141,6 @@ export default function App() {
                   activeTrail={stats.activeTrail || null}
                   onStartTrail={handleStartTrail}
                   onDeleteTrail={handleDeleteTrail}
-                  assignments={assignments}
-                  onStartAssignment={handleStartAssignment}
                   cachedQuizzes={cachedQuizzes}
                   onStartCachedQuiz={handleStartCachedQuiz}
                   defaultGender={stats.gender}
@@ -1338,24 +1312,6 @@ export default function App() {
                 transition={{ duration: 0.4 }}
               >
                 <ExpansionWizard onBack={() => setScreen('setup')} />
-              </motion.div>
-            )}
-
-            {screen === 'missions' && (
-              <motion.div
-                key="missions"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 20 }}
-                transition={{ duration: 0.4 }}
-              >
-                <TeacherMissions 
-                  assignments={profileAssignments}
-                  isLoading={isLoadingAssignments}
-                  activeProfile={activeProfile}
-                  onStartMission={handleStartAssignment}
-                  onBackToGenerator={() => setScreen('setup')}
-                />
               </motion.div>
             )}
           </AnimatePresence>
