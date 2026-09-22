@@ -1,0 +1,80 @@
+========================================================================
+             DECLARAÇÃO DE SEGREDO E RESUMO DIGITAL (HASH)
+                    REGISTRO DE SOFTWARE - INPI
+========================================================================
+
+Esta declaração contém o resumo digital criptográfico (checksum SHA-256) gerado 
+a partir do código-fonte do software para fins de comprovação de autoria e 
+registro junto ao INPI (Instituto Nacional da Propriedade Industrial) do Brasil, 
+em cumprimento à Lei nº 9.609/1998 (Lei do Software) e ao Decreto nº 10.114/2019.
+
+------------------------------------------------------------------------
+1. INFORMAÇÕES DO SOFTWARE
+------------------------------------------------------------------------
+Nome Comercial:     HiperReforço
+Descrição Breve:    Aplicativo de reforço escolar inclusivo destinado a crianças
+                     neurodivergentes (TDAH, TEA), integrando seus temas de
+                     hiperfoco para um aprendizado altamente engajador.
+Série/Versão:       1.0.0
+Data de Geração:    25/05/2026 (UTC) - Geração Local em 25/05/2026, 21:31:21 (Horário de Brasília)
+Linguagem Principal: TypeScript / React / Node.js
+Arquitetura:        Single-Page Application (Vite + Tailwind CSS / Recharts / jsPDF)
+
+------------------------------------------------------------------------
+2. ARQUIVO DE CÓDIGO-FONTE BUNDLED
+------------------------------------------------------------------------
+Nome do Arquivo:    hiperreforco-source.zip
+Tamanho do Arquivo: 618.71 KB (633558 bytes)
+Algoritmo de Hash:  SHA-256
+
+------------------------------------------------------------------------
+3. RESUMO DIGITAL DO SOFTWARE (HASH SHA-256)
+------------------------------------------------------------------------
+O hash abaixo é o identificador único e inviolável do seu código-fonte.
+Guarde-o bem e utilize-o exatamente como está na tela do formulário do INPI:
+
+👉 HASH SHA-256: 34ADE91EB6063F67823E01A096D3CE22D0EC870167F0E40273E7DB14E8998E92
+
+------------------------------------------------------------------------
+4. PASSO A PASSO PARA REGISTRO NO PORTAL E-INPI
+------------------------------------------------------------------------
+Siga rigorosamente as etapas abaixo para registrar a sua marca e patente de código-fonte:
+
+Etapa 1: Acesso ao Portal e Cadastro
+- Acesse o portal oficial: https://www.gov.br/inpi
+- Clique em "Serviços" > "Programa de Computador".
+- Faça cadastro ou faça o login via Gov.br (com conta nível prata ou ouro).
+
+Etapa 2: Pagamento da Guia de Recolhimento da União (GRU)
+- Emita a GRU para o serviço código 512: "Pedido de registro de programa de computador".
+- Efetue o pagamento. Guarde o comprovante bancário e o número da GRU paga.
+
+Etapa 3: Preenchimento do Formulário Eletrônico
+- Acesse o sistema e-Software do INPI.
+- Forneça os dados básicos da criação: título, campo de aplicação (ex: Educacional), 
+  linguagem (TypeScript/React), nomes de autores/proprietários (você ou sua empresa).
+- No campo destinado ao "Resumo Digital (Hash)":
+  1. Selecione o algoritmo: "SHA-256"
+  2. Cole EXATAMENTE o hash gerador deste documento:
+     34ADE91EB6063F67823E01A096D3CE22D0EC870167F0E40273E7DB14E8998E92
+  3. No tipo de representação, marque "Hexadecimal".
+
+Etapa 4: Declaração de Veracidade (DV)
+- O INPI não exige mais o upload do código-fonte completo em seus servidores. Ele exige 
+  apenas que você assine a Declaração de Veracidade e insira esse hash gerado.
+- Caso precise comprovar a integridade de seu código em uma disputa jurídica, esse arquivo 
+  "hiperreforco-source.zip" que você gerou DEVE ser mantido guardado intacto. Na justiça, 
+  o juiz gerará o SHA-256 do seu arquivo zip e o comparará com o hash registrado no INPI. 
+  Eles devem ser idênticos.
+
+------------------------------------------------------------------------
+5. INSTRUÇÕES DE ARQUIVAMENTO DE SEGURANÇA
+------------------------------------------------------------------------
+- Guarde com o maior cuidado possível o arquivo "hiperreforco-source.zip" em múltiplos 
+  backups seguros (Drive, Nuvem, Pendrive).
+- NUNCA mude uma vírgula ou altere os arquivos dentro do arquivo ZIP "hiperreforco-source.zip", 
+  pois qualquer modificação (mesmo de espaço em branco ou data de modificação) altera 
+  completamente o hash SHA-256 gerado, inutilizando a prova de anterioridade caso precise!
+
+Gerado eletronicamente por HiperReforço-DevOps.
+========================================================================

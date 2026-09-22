@@ -1,0 +1,164 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "Perfil do usuário (aluno/pai/especialista)",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "displayName": { "type": "string" },
+        "role": { "type": "string", "enum": ["student", "parent", "specialist"] },
+        "xp": { "type": "number" },
+        "level": { "type": "number" },
+        "streak": { "type": "number" },
+        "totalCorrect": { "type": "number" },
+        "totalQuestions": { "type": "number" },
+        "lastPlayed": { "type": "string", "format": "date-time" },
+        "assignedSpecialist": { "type": "string" }
+      },
+      "required": ["uid", "email", "xp", "level", "role"]
+    },
+    "SpecialistComment": {
+      "title": "SpecialistComment",
+      "description": "Comentários e orientações de psicopedagogos",
+      "type": "object",
+      "properties": {
+        "specialistId": { "type": "string" },
+        "specialistName": { "type": "string" },
+        "content": { "type": "string" },
+        "date": { "type": "string", "format": "date-time" },
+        "category": { "type": "string", "enum": ["pedagogical", "behavioral", "recommendation"] }
+      },
+      "required": ["specialistId", "content", "date"]
+    },
+    "LearningTrail": {
+      "title": "LearningTrail",
+      "description": "Trilha de aprendizado de longo prazo",
+      "type": "object",
+      "properties": {
+        "subject": { "type": "string" },
+        "focus": { "type": "string" },
+        "currentStep": { "type": "number" },
+        "totalSteps": { "type": "number" },
+        "status": { "type": "string", "enum": ["active", "completed"] }
+      },
+      "required": ["subject", "focus", "currentStep", "totalSteps"]
+    },
+    "QuizHistory": {
+      "title": "QuizHistory",
+      "description": "Histórico de quizzes realizados",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "date": { "type": "string", "format": "date-time" },
+        "subject": { "type": "string" },
+        "topic": { "type": "string" },
+        "focus": { "type": "string" },
+        "score": { "type": "number" },
+        "total": { "type": "number" },
+        "grade": { "type": "string" },
+        "wrongQuestions": { "type": "array" },
+        "skippedQuestions": { "type": "array" },
+        "isArchived": { "type": "boolean" },
+        "questionDurations": { "type": "array" }
+      },
+      "required": ["userId", "date", "subject", "topic", "score", "total"]
+    },
+    "QuizProgress": {
+      "title": "QuizProgress",
+      "description": "Estado de rascunho de um quiz em andamento",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "profileId": { "type": "string" },
+        "config": { "type": "object" },
+        "questions": { "type": "array" },
+        "currentIndex": { "type": "number" },
+        "score": { "type": "number" },
+        "wrongQuestions": { "type": "array" },
+        "skippedQuestionIndices": { "type": "array" },
+        "responses": { "type": "array" },
+        "durations": { "type": "array" },
+        "lastUpdated": { "type": "string", "format": "date-time" }
+      }
+    },
+    "Badge": {
+      "title": "Badge",
+      "description": "Medalhas conquistadas",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "badgeId": { "type": "string" },
+        "name": { "type": "string" },
+        "icon": { "type": "string" },
+        "unlockedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "badgeId", "name", "unlockedAt"]
+    },
+    "SpecialistAssignment": {
+      "title": "SpecialistAssignment",
+      "description": "Atividades enviadas por especialistas",
+      "type": "object",
+      "properties": {
+        "specialistId": { "type": "string" },
+        "specialistName": { "type": "string" },
+        "studentId": { "type": "string" },
+        "topic": { "type": "string" },
+        "questions": { "type": "array" },
+        "status": { "type": "string", "enum": ["pending", "completed"] },
+        "assignedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["specialistId", "studentId", "status", "assignedAt"]
+    },
+    "MaterialArchive": {
+      "title": "MaterialArchive",
+      "description": "Arquivos de materiais de estudo submetidos",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "fileName": { "type": "string" },
+        "downloadURL": { "type": "string" },
+        "uploadedAt": { "type": "string", "format": "date-time" },
+        "size": { "type": "number" },
+        "type": { "type": "string" }
+      },
+      "required": ["userId", "fileName", "downloadURL", "uploadedAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "Dados do perfil do usuário"
+    },
+    "/users/{userId}/history/{historyId}": {
+      "schema": "QuizHistory",
+      "description": "Histórico de quizzes do usuário"
+    },
+    "/users/{userId}/badges/{badgeId}": {
+      "schema": "Badge",
+      "description": "Medalhas do usuário"
+    },
+    "/users/{userId}/comments/{commentId}": {
+      "schema": "SpecialistComment",
+      "description": "Comentários do especialista para o aluno"
+    },
+    "/users/{userId}/trails/{trailId}": {
+      "schema": "LearningTrail",
+      "description": "Trilhas de aprendizado do aluno"
+    },
+    "/users/{userId}/assignments/{assignmentId}": {
+      "schema": "SpecialistAssignment",
+      "description": "Atividades enviadas pelo especialista para o aluno"
+    },
+    "/users/{userId}/materials/{materialId}": {
+      "schema": "MaterialArchive",
+      "description": "Materiais enviados pelo usuário"
+    },
+    "/users/{userId}/progress/{progressId}": {
+      "schema": "QuizProgress",
+      "description": "Rascunhos de quizzes não finalizados"
+    }
+  }
+}
+

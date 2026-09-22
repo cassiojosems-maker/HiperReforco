@@ -1,0 +1,76 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // A autorização de especialista depende exclusivamente da Custom Claim 'specialist: true'
+    function isSpecialist() {
+      return isAuthenticated() && request.auth.token.specialist == true;
+    }
+
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isSpecialist();
+
+      // Criação inicial: cliente só pode registrar role como 'parent' ou 'student' (nunca 'specialist')
+      allow create: if isOwner(userId) && 
+        (!('role' in request.resource.data) || request.resource.data.role == 'parent' || request.resource.data.role == 'student') &&
+        (!('specialist' in request.resource.data));
+
+      // Atualização: cliente não pode alterar o campo 'role' para se promover a especialista
+      allow update: if isOwner(userId) &&
+        (!('role' in request.resource.data) || request.resource.data.role == resource.data.role) &&
+        (isSpecialist() || request.resource.data.role != 'specialist');
+
+      allow delete: if false;
+
+      match /history/{historyId} {
+        allow read: if isOwner(userId) || isSpecialist();
+        allow write: if isOwner(userId);
+      }
+
+      match /badges/{badgeId} {
+        allow read: if isOwner(userId) || isSpecialist();
+        allow write: if isOwner(userId);
+      }
+
+      match /comments/{commentId} {
+        allow read: if isOwner(userId) || isSpecialist();
+        // Somente quem possui a claim specialist: true pode emitir ou gerenciar pareceres
+        allow create, update, delete: if isSpecialist();
+      }
+
+      match /trails/{trailId} {
+        allow read: if isOwner(userId) || isSpecialist();
+        allow write: if isOwner(userId) || isSpecialist();
+      }
+
+      match /assignments/{assignmentId} {
+        allow read: if isOwner(userId) || isSpecialist();
+        allow create, delete: if isSpecialist();
+        allow update: if isSpecialist() || isOwner(userId);
+      }
+
+      match /progress/{progressId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      match /materials/{materialId} {
+        allow read: if isOwner(userId) || isSpecialist();
+        allow write: if isOwner(userId);
+      }
+    }
+
+    match /leaderboard/{entryUserId} {
+      allow read: if isAuthenticated();
+      allow write: if isOwner(entryUserId);
+    }
+  }
+}
+
